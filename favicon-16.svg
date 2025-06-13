@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="50%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="16" height="16" rx="3.5" fill="url(#bgGrad)"/>
+
+  <!-- 内边框高光 -->
+  <rect x="0.5" y="0.5" width="15" height="15" rx="3"
+        fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>
+
+  <!-- 简化的M字母 -->
+  <path d="M2.5 3.5 L2.5 12.5 L4 12.5 L4 6.5 L6 9.5 L7 9.5 L9 6.5 L9 12.5 L10.5 12.5 L10.5 3.5 L8.5 3.5 L6.5 7.5 L4.5 3.5 Z"
+        fill="white" opacity="0.96"/>
+
+  <!-- 装饰元素 -->
+  <g opacity="0.7">
+    <circle cx="12.5" cy="5" r="0.4" fill="white"/>
+    <rect x="11.5" y="7" width="2" height="0.4" rx="0.2" fill="white"/>
+    <rect x="11.5" y="9" width="1.5" height="0.4" rx="0.2" fill="white"/>
+  </g>
+
+  <!-- 顶部高光 -->
+  <ellipse cx="8" cy="3" rx="6" ry="1.5" fill="rgba(255,255,255,0.15)"/>
+</svg>

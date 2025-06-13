@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarkDo</title>
+
+    <!-- 网页图标 -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="alternate icon" href="favicon.svg">
+    <link rel="mask-icon" href="favicon.svg" color="#667eea">
+
+    <!-- 字体引入 -->
+    <link rel="stylesheet" href="https://fontsapi.zeoseven.com/292/main/result.css">
+
+    <!-- 图标库 -->
+    <link rel="stylesheet" href="https://unpkg.com/lucide@0.294.0/dist/umd/lucide.css">
+    <script src="https://unpkg.com/lucide@0.294.0/dist/umd/lucide.js"></script>
+
+    <!-- Markdown解析库 -->
+    <script src="https://unpkg.com/marked@9.1.6/marked.min.js"></script>
+
+    <!-- 代码高亮库 -->
+    <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/github.min.css">
+    <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+
+    <!-- KaTeX数学公式库 -->
+    <link rel="stylesheet" href="https://unpkg.com/katex@0.16.8/dist/katex.min.css">
+    <script src="https://unpkg.com/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://unpkg.com/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 工具栏 -->
+        <div class="toolbar" id="toolbar">
+            <button class="toolbar-btn" onclick="insertMarkdown('**', '**')" title="加粗">
+                <i data-lucide="bold"></i>
+            </button>
+            <button class="toolbar-btn" onclick="insertMarkdown('*', '*')" title="斜体">
+                <i data-lucide="italic"></i>
+            </button>
+            <button class="toolbar-btn" onclick="insertMarkdown('~~', '~~')" title="删除线">
+                <i data-lucide="strikethrough"></i>
+            </button>
+            <button class="toolbar-btn" onclick="insertMarkdown('`', '`')" title="行内代码">
+                <i data-lucide="code"></i>
+            </button>
+
+            <div class="toolbar-separator"></div>
+
+            <button class="toolbar-btn" onclick="insertHeading(1)" title="一级标题">
+                <i data-lucide="heading-1"></i>
+            </button>
+            <button class="toolbar-btn" onclick="insertHeading(2)" title="二级标题">
+                <i data-lucide="heading-2"></i>
+            </button>
+            <button class="toolbar-btn" onclick="insertHeading(3)" title="三级标题">
+                <i data-lucide="heading-3"></i>
+            </button>
+
+            <div class="toolbar-separator"></div>
+
+            <button class="toolbar-btn" onclick="insertList('- ')" title="无序列表">
+                <i data-lucide="list"></i>
+            </button>
+            <button class="toolbar-btn" onclick="insertList('1. ')" title="有序列表">
+                <i data-lucide="list-ordered"></i>
+            </button>
+            <button class="toolbar-btn" onclick="insertQuote()" title="引用">
+                <i data-lucide="quote"></i>
+            </button>
+
+            <div class="toolbar-separator"></div>
+
+            <button class="toolbar-btn" onclick="insertLink()" title="链接">
+                <i data-lucide="link"></i>
+            </button>
+            <button class="toolbar-btn" onclick="insertImage()" title="图片">
+                <i data-lucide="image"></i>
+            </button>
+            <button class="toolbar-btn" onclick="insertTable()" title="表格">
+                <i data-lucide="table"></i>
+            </button>
+            <button class="toolbar-btn" onclick="insertCodeBlock()" title="代码块">
+                <i data-lucide="code-2"></i>
+            </button>
+
+            <div class="toolbar-separator"></div>
+
+            <button class="toolbar-btn" onclick="insertInlineMath()" title="行内公式">
+                <i data-lucide="sigma"></i>
+            </button>
+            <button class="toolbar-btn" onclick="insertDisplayMath()" title="块级公式">
+                <i data-lucide="function-square"></i>
+            </button>
+
+            <div class="toolbar-separator"></div>
+
+            <button class="toolbar-btn" onclick="clearContent()" title="清空内容">
+                <i data-lucide="trash-2"></i>
+            </button>
+
+            <button class="toolbar-btn theme-toggle" onclick="toggleTheme()" title="切换主题" id="themeToggle">
+                <i data-lucide="sun"></i>
+            </button>
+        </div>
+
+        <!-- 主要内容区域 -->
+        <div class="main-content">
+            <div class="editor-panel" id="editorPanel">
+                <div class="panel-header" id="editorHeader">
+                    <i data-lucide="edit-3"></i>
+                    <span>MarkDo 编辑器</span>
+                </div>
+                <textarea id="markdown-input" placeholder="在这里输入您的Markdown内容..."></textarea>
+            </div>
+
+            <div class="preview-panel" id="previewPanel">
+                <div class="panel-header" id="previewHeader">
+                    <i data-lucide="eye"></i>
+                    <span>实时预览</span>
+                    <button class="toolbar-btn" onclick="downloadMarkdown()" title="下载Markdown文件" style="margin-left: auto;">
+                        <i data-lucide="download"></i>
+                    </button>
+                </div>
+                <div id="preview"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义确认弹窗 -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <i data-lucide="alert-triangle" class="modal-icon"></i>
+                <h3 class="modal-title">确认删除</h3>
+            </div>
+            <div class="modal-body">
+                确定要清空所有内容吗？此操作不可撤销，所有编辑的内容将被永久删除。
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="hideConfirmModal()">取消</button>
+                <button class="modal-btn danger" onclick="confirmClearContent()">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义脚本 -->
+    <script src="script.js"></script>
+</body>
+</html>
