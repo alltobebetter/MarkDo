@@ -10,24 +10,38 @@
     <link rel="alternate icon" href="favicon.svg">
     <link rel="mask-icon" href="favicon.svg" color="#667eea">
 
+    <!-- PWA支持 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="MarkDo">
+    <link rel="apple-touch-icon" href="favicon.svg">
+    <meta name="msapplication-TileColor" content="#667eea">
+    <meta name="msapplication-config" content="browserconfig.xml">
+
     <!-- 字体引入 -->
     <link rel="stylesheet" href="https://fontsapi.zeoseven.com/292/main/result.css">
 
     <!-- 图标库 -->
-    <link rel="stylesheet" href="https://unpkg.com/lucide@0.294.0/dist/umd/lucide.css">
-    <script src="https://unpkg.com/lucide@0.294.0/dist/umd/lucide.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.css">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.js"></script>
 
     <!-- Markdown解析库 -->
-    <script src="https://unpkg.com/marked@9.1.6/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
 
     <!-- 代码高亮库 -->
-    <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/github.min.css">
-    <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
 
     <!-- KaTeX数学公式库 -->
-    <link rel="stylesheet" href="https://unpkg.com/katex@0.16.8/dist/katex.min.css">
-    <script src="https://unpkg.com/katex@0.16.8/dist/katex.min.js"></script>
-    <script src="https://unpkg.com/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <!-- 导出功能库 -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
     <!-- 自定义样式 -->
     <link rel="stylesheet" href="style.css">
@@ -36,6 +50,15 @@
     <div class="container">
         <!-- 工具栏 -->
         <div class="toolbar" id="toolbar">
+            <button class="toolbar-btn" onclick="undo()" title="撤销 (Ctrl+Z)" id="undoBtn">
+                <i data-lucide="undo"></i>
+            </button>
+            <button class="toolbar-btn" onclick="redo()" title="重做 (Ctrl+Y)" id="redoBtn">
+                <i data-lucide="redo"></i>
+            </button>
+
+            <div class="toolbar-separator"></div>
+
             <button class="toolbar-btn" onclick="insertMarkdown('**', '**')" title="加粗">
                 <i data-lucide="bold"></i>
             </button>
@@ -72,6 +95,9 @@
             <button class="toolbar-btn" onclick="insertQuote()" title="引用">
                 <i data-lucide="quote"></i>
             </button>
+            <button class="toolbar-btn" onclick="insertHorizontalRule()" title="水平分割线">
+                <i data-lucide="minus"></i>
+            </button>
 
             <div class="toolbar-separator"></div>
 
@@ -99,8 +125,20 @@
 
             <div class="toolbar-separator"></div>
 
+            <button class="toolbar-btn" onclick="showSearchBar()" title="搜索替换 (Ctrl+F)">
+                <i data-lucide="search"></i>
+            </button>
+            <button class="toolbar-btn" onclick="importMarkdown()" title="导入MD文件">
+                <i data-lucide="upload"></i>
+            </button>
             <button class="toolbar-btn" onclick="clearContent()" title="清空内容">
                 <i data-lucide="trash-2"></i>
+            </button>
+            <button class="toolbar-btn" onclick="toggleFullscreen()" title="全屏模式 (F11)" id="fullscreenBtn">
+                <i data-lucide="maximize"></i>
+            </button>
+            <button class="toolbar-btn" onclick="showInstallPrompt()" title="安装应用" id="installBtn" style="display: none;">
+                <i data-lucide="download-cloud"></i>
             </button>
 
             <button class="toolbar-btn theme-toggle" onclick="toggleTheme()" title="切换主题" id="themeToggle">
@@ -114,6 +152,7 @@
                 <div class="panel-header" id="editorHeader">
                     <i data-lucide="edit-3"></i>
                     <span>MarkDo 编辑器</span>
+                    <div class="word-count" id="wordCount">0 字符</div>
                 </div>
                 <textarea id="markdown-input" placeholder="在这里输入您的Markdown内容..."></textarea>
             </div>
@@ -122,11 +161,105 @@
                 <div class="panel-header" id="previewHeader">
                     <i data-lucide="eye"></i>
                     <span>实时预览</span>
-                    <button class="toolbar-btn" onclick="downloadMarkdown()" title="下载Markdown文件" style="margin-left: auto;">
-                        <i data-lucide="download"></i>
-                    </button>
+                    <div class="export-buttons" style="margin-left: auto; display: flex; gap: 8px;">
+                        <button class="toolbar-btn" onclick="exportToPNG()" title="导出为图片">
+                            <i data-lucide="image"></i>
+                        </button>
+                        <button class="toolbar-btn" onclick="exportToPDF()" title="导出为PDF">
+                            <i data-lucide="file-text"></i>
+                        </button>
+                        <button class="toolbar-btn" onclick="exportToHTML()" title="导出为HTML">
+                            <i data-lucide="code"></i>
+                        </button>
+                        <button class="toolbar-btn" onclick="downloadMarkdown()" title="下载Markdown文件">
+                            <i data-lucide="download"></i>
+                        </button>
+                    </div>
                 </div>
                 <div id="preview"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 小型搜索栏 -->
+    <div class="search-bar" id="searchBar">
+        <div class="search-bar-content">
+            <div class="search-row">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="text" id="searchInput" placeholder="搜索..." class="search-input">
+                <span class="search-results" id="searchResults"></span>
+                <button class="search-btn" onclick="findPrevious()" title="上一个 (Shift+Enter)">
+                    <i data-lucide="chevron-up"></i>
+                </button>
+                <button class="search-btn" onclick="findNext()" title="下一个 (Enter)">
+                    <i data-lucide="chevron-down"></i>
+                </button>
+                <button class="search-btn" onclick="toggleReplace()" title="切换替换模式" id="toggleReplaceBtn">
+                    <i data-lucide="replace"></i>
+                </button>
+                <button class="search-btn" onclick="hideSearchBar()" title="关闭 (Esc)">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="replace-row" id="replaceRow" style="display: none;">
+                <i data-lucide="replace" class="search-icon"></i>
+                <input type="text" id="replaceInput" placeholder="替换为..." class="search-input">
+                <button class="search-btn" onclick="replaceNext()" title="替换当前">
+                    <i data-lucide="corner-down-right"></i>
+                </button>
+                <button class="search-btn" onclick="replaceAll()" title="全部替换">
+                    <i data-lucide="replace-all"></i>
+                </button>
+                <div class="search-options">
+                    <label title="区分大小写"><input type="checkbox" id="caseSensitive"> Aa</label>
+                    <label title="使用正则表达式"><input type="checkbox" id="useRegex"> .*</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PWA安装提示弹窗 -->
+    <div class="modal-overlay" id="installModal">
+        <div class="modal install-modal" id="installModalContent">
+            <div class="modal-header">
+                <i data-lucide="download-cloud" class="modal-icon"></i>
+                <h3 class="modal-title">安装MarkDo应用</h3>
+            </div>
+            <div class="modal-body">
+                <p>将MarkDo安装到您的设备上，享受更好的使用体验：</p>
+                <ul>
+                    <li>🚀 更快的启动速度</li>
+                    <li>📱 像原生应用一样使用</li>
+                    <li>🔄 离线编辑支持</li>
+                    <li>🎯 专注的写作环境</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="hideInstallModal()">稍后再说</button>
+                <button class="modal-btn primary" onclick="installPWA()">立即安装</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PWA安装提示弹窗 -->
+    <div class="modal-overlay" id="installModal">
+        <div class="modal install-modal" id="installModalContent">
+            <div class="modal-header">
+                <i data-lucide="download-cloud" class="modal-icon"></i>
+                <h3 class="modal-title">安装MarkDo应用</h3>
+            </div>
+            <div class="modal-body">
+                <p>将MarkDo安装到您的设备上，享受更好的使用体验：</p>
+                <ul>
+                    <li>🚀 更快的启动速度</li>
+                    <li>📱 像原生应用一样使用</li>
+                    <li>🔄 离线编辑支持</li>
+                    <li>🎯 专注的写作环境</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="hideInstallModal()">稍后再说</button>
+                <button class="modal-btn primary" onclick="installPWA()">立即安装</button>
             </div>
         </div>
     </div>
@@ -147,6 +280,9 @@
             </div>
         </div>
     </div>
+
+    <!-- 隐藏的文件输入 -->
+    <input type="file" id="fileInput" accept=".md,.markdown,.txt" style="display: none;">
 
     <!-- 自定义脚本 -->
     <script src="script.js"></script>
