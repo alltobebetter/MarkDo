@@ -50,15 +50,6 @@
     <div class="container">
         <!-- 工具栏 -->
         <div class="toolbar" id="toolbar">
-            <button class="toolbar-btn" onclick="undo()" title="撤销 (Ctrl+Z)" id="undoBtn">
-                <i data-lucide="undo"></i>
-            </button>
-            <button class="toolbar-btn" onclick="redo()" title="重做 (Ctrl+Y)" id="redoBtn">
-                <i data-lucide="redo"></i>
-            </button>
-
-            <div class="toolbar-separator"></div>
-
             <button class="toolbar-btn" onclick="insertMarkdown('**', '**')" title="加粗">
                 <i data-lucide="bold"></i>
             </button>
@@ -125,9 +116,6 @@
 
             <div class="toolbar-separator"></div>
 
-            <button class="toolbar-btn" onclick="showSearchBar()" title="搜索替换 (Ctrl+F)">
-                <i data-lucide="search"></i>
-            </button>
             <button class="toolbar-btn" onclick="importMarkdown()" title="导入MD文件">
                 <i data-lucide="upload"></i>
             </button>
@@ -181,65 +169,7 @@
         </div>
     </div>
 
-    <!-- 小型搜索栏 -->
-    <div class="search-bar" id="searchBar">
-        <div class="search-bar-content">
-            <div class="search-row">
-                <i data-lucide="search" class="search-icon"></i>
-                <input type="text" id="searchInput" placeholder="搜索..." class="search-input">
-                <span class="search-results" id="searchResults"></span>
-                <button class="search-btn" onclick="findPrevious()" title="上一个 (Shift+Enter)">
-                    <i data-lucide="chevron-up"></i>
-                </button>
-                <button class="search-btn" onclick="findNext()" title="下一个 (Enter)">
-                    <i data-lucide="chevron-down"></i>
-                </button>
-                <button class="search-btn" onclick="toggleReplace()" title="切换替换模式" id="toggleReplaceBtn">
-                    <i data-lucide="replace"></i>
-                </button>
-                <button class="search-btn" onclick="hideSearchBar()" title="关闭 (Esc)">
-                    <i data-lucide="x"></i>
-                </button>
-            </div>
-            <div class="replace-row" id="replaceRow" style="display: none;">
-                <i data-lucide="replace" class="search-icon"></i>
-                <input type="text" id="replaceInput" placeholder="替换为..." class="search-input">
-                <button class="search-btn" onclick="replaceNext()" title="替换当前">
-                    <i data-lucide="corner-down-right"></i>
-                </button>
-                <button class="search-btn" onclick="replaceAll()" title="全部替换">
-                    <i data-lucide="replace-all"></i>
-                </button>
-                <div class="search-options">
-                    <label title="区分大小写"><input type="checkbox" id="caseSensitive"> Aa</label>
-                    <label title="使用正则表达式"><input type="checkbox" id="useRegex"> .*</label>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- PWA安装提示弹窗 -->
-    <div class="modal-overlay" id="installModal">
-        <div class="modal install-modal" id="installModalContent">
-            <div class="modal-header">
-                <i data-lucide="download-cloud" class="modal-icon"></i>
-                <h3 class="modal-title">安装MarkDo应用</h3>
-            </div>
-            <div class="modal-body">
-                <p>将MarkDo安装到您的设备上，享受更好的使用体验：</p>
-                <ul>
-                    <li>🚀 更快的启动速度</li>
-                    <li>📱 像原生应用一样使用</li>
-                    <li>🔄 离线编辑支持</li>
-                    <li>🎯 专注的写作环境</li>
-                </ul>
-            </div>
-            <div class="modal-footer">
-                <button class="modal-btn" onclick="hideInstallModal()">稍后再说</button>
-                <button class="modal-btn primary" onclick="installPWA()">立即安装</button>
-            </div>
-        </div>
-    </div>
 
     <!-- PWA安装提示弹窗 -->
     <div class="modal-overlay" id="installModal">

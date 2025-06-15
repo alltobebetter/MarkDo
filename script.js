@@ -39,74 +39,7 @@ marked.setOptions({
 const input = document.getElementById('markdown-input');
 const preview = document.getElementById('preview');
 
-// 撤销/重做功能
-class UndoRedoManager {
-    constructor() {
-        this.history = [];
-        this.currentIndex = -1;
-        this.maxHistorySize = 100;
-        this.isUndoRedo = false;
-    }
 
-    saveState(content) {
-        if (this.isUndoRedo) return;
-
-        // 如果当前不在历史记录末尾，删除后面的记录
-        if (this.currentIndex < this.history.length - 1) {
-            this.history = this.history.slice(0, this.currentIndex + 1);
-        }
-
-        // 避免重复保存相同内容
-        if (this.history.length > 0 && this.history[this.history.length - 1] === content) {
-            return;
-        }
-
-        this.history.push(content);
-        this.currentIndex++;
-
-        // 限制历史记录大小
-        if (this.history.length > this.maxHistorySize) {
-            this.history.shift();
-            this.currentIndex--;
-        }
-    }
-
-    undo() {
-        if (this.currentIndex > 0) {
-            this.currentIndex--;
-            this.isUndoRedo = true;
-            const content = this.history[this.currentIndex];
-            input.value = content;
-            updatePreview();
-            this.isUndoRedo = false;
-            return true;
-        }
-        return false;
-    }
-
-    redo() {
-        if (this.currentIndex < this.history.length - 1) {
-            this.currentIndex++;
-            this.isUndoRedo = true;
-            const content = this.history[this.currentIndex];
-            input.value = content;
-            updatePreview();
-            this.isUndoRedo = false;
-            return true;
-        }
-        return false;
-    }
-
-    canUndo() {
-        return this.currentIndex > 0;
-    }
-
-    canRedo() {
-        return this.currentIndex < this.history.length - 1;
-    }
-}
-
-const undoRedoManager = new UndoRedoManager();
 
 function updatePreview() {
     let markdownText = input.value;
@@ -139,8 +72,23 @@ function updatePreview() {
         }
     });
 
+    // 设置所有链接在新标签页打开
+    const links = preview.querySelectorAll('a[href]');
+    links.forEach(link => {
+        // 只处理外部链接，内部锚点链接保持原样
+        if (link.getAttribute('href').startsWith('http') ||
+            link.getAttribute('href').startsWith('//') ||
+            link.getAttribute('href').startsWith('www.')) {
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+        }
+    });
+
     // 重新初始化新添加的图标
     lucide.createIcons();
+
+    // 更新滚动映射
+    updateScrollMapping();
 }
 
 // 预处理数学公式，处理跨行的$$块
@@ -217,52 +165,13 @@ updatePreview();
 // 初始化图标
 lucide.createIcons();
 
-// 初始化撤销重做按钮状态
-updateUndoRedoButtons();
 
-// 撤销/重做函数
-function undo() {
-    if (undoRedoManager.undo()) {
-        updateUndoRedoButtons();
-        saveContent();
-    }
-}
-
-function redo() {
-    if (undoRedoManager.redo()) {
-        updateUndoRedoButtons();
-        saveContent();
-    }
-}
-
-function updateUndoRedoButtons() {
-    const undoBtn = document.getElementById('undoBtn');
-    const redoBtn = document.getElementById('redoBtn');
-
-    if (undoBtn) {
-        undoBtn.disabled = !undoRedoManager.canUndo();
-        undoBtn.style.opacity = undoRedoManager.canUndo() ? '1' : '0.5';
-    }
-
-    if (redoBtn) {
-        redoBtn.disabled = !undoRedoManager.canRedo();
-        redoBtn.style.opacity = undoRedoManager.canRedo() ? '1' : '0.5';
-    }
-}
 
 // 监听输入变化
-let inputTimer;
 input.addEventListener('input', function() {
     updatePreview();
     updateWordCount();
     saveContent();
-
-    // 防抖保存历史记录
-    clearTimeout(inputTimer);
-    inputTimer = setTimeout(() => {
-        undoRedoManager.saveState(input.value);
-        updateUndoRedoButtons();
-    }, 500);
 });
 
 // 字数统计功能
@@ -305,268 +214,10 @@ document.addEventListener('fullscreenchange', function() {
     }
 });
 
-// 搜索替换功能
-let searchState = {
-    currentIndex: -1,
-    matches: [],
-    lastSearchText: ''
-};
 
-function showSearchBar() {
-    const searchBar = document.getElementById('searchBar');
-    searchBar.style.display = 'block';
-
-    // 触发动画
-    setTimeout(() => {
-        searchBar.classList.add('show');
-    }, 10);
-
-    // 聚焦搜索输入框
-    setTimeout(() => {
-        document.getElementById('searchInput').focus();
-        lucide.createIcons();
-    }, 150);
-}
-
-function hideSearchBar() {
-    const searchBar = document.getElementById('searchBar');
-    searchBar.classList.remove('show');
-
-    // 等待动画完成后隐藏
-    setTimeout(() => {
-        searchBar.style.display = 'none';
-    }, 200);
-
-    // 清除高亮
-    clearSearchHighlight();
-
-    // 隐藏替换行
-    document.getElementById('replaceRow').style.display = 'none';
-    document.getElementById('toggleReplaceBtn').classList.remove('active');
-
-    // 重新聚焦编辑器
-    input.focus();
-}
-
-function toggleReplace() {
-    const replaceRow = document.getElementById('replaceRow');
-    const toggleBtn = document.getElementById('toggleReplaceBtn');
-
-    if (replaceRow.style.display === 'none') {
-        replaceRow.style.display = 'flex';
-        toggleBtn.classList.add('active');
-        setTimeout(() => {
-            document.getElementById('replaceInput').focus();
-            lucide.createIcons();
-        }, 100);
-    } else {
-        replaceRow.style.display = 'none';
-        toggleBtn.classList.remove('active');
-        document.getElementById('searchInput').focus();
-    }
-}
-
-function clearSearchHighlight() {
-    // 清除搜索状态
-    searchState.matches = [];
-    searchState.currentIndex = -1;
-    updateSearchResults();
-}
-
-function updateSearchResults() {
-    const resultsElement = document.getElementById('searchResults');
-    if (searchState.matches.length === 0) {
-        resultsElement.textContent = '';
-    } else {
-        resultsElement.textContent = `${searchState.currentIndex + 1}/${searchState.matches.length}`;
-    }
-}
-
-function performSearch() {
-    const searchText = document.getElementById('searchInput').value;
-    const caseSensitive = document.getElementById('caseSensitive').checked;
-    const useRegex = document.getElementById('useRegex').checked;
-
-    if (!searchText) {
-        clearSearchHighlight();
-        return;
-    }
-
-    const content = input.value;
-    let searchPattern;
-
-    try {
-        if (useRegex) {
-            searchPattern = new RegExp(searchText, caseSensitive ? 'g' : 'gi');
-        } else {
-            const escapedText = searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            searchPattern = new RegExp(escapedText, caseSensitive ? 'g' : 'gi');
-        }
-    } catch (e) {
-        searchState.matches = [];
-        updateSearchResults();
-        return;
-    }
-
-    const matches = [...content.matchAll(searchPattern)];
-    searchState.matches = matches;
-    searchState.lastSearchText = searchText;
-
-    if (matches.length === 0) {
-        searchState.currentIndex = -1;
-    } else {
-        // 找到当前光标位置之后的第一个匹配
-        const currentPos = input.selectionStart;
-        let nextIndex = matches.findIndex(match => match.index >= currentPos);
-
-        if (nextIndex === -1) {
-            nextIndex = 0; // 从头开始
-        }
-
-        searchState.currentIndex = nextIndex;
-        selectMatch(nextIndex);
-    }
-
-    updateSearchResults();
-}
-
-function findNext() {
-    if (searchState.matches.length === 0) {
-        performSearch();
-        return;
-    }
-
-    searchState.currentIndex = (searchState.currentIndex + 1) % searchState.matches.length;
-    selectMatch(searchState.currentIndex);
-    updateSearchResults();
-}
-
-function findPrevious() {
-    if (searchState.matches.length === 0) {
-        performSearch();
-        return;
-    }
-
-    searchState.currentIndex = searchState.currentIndex <= 0 ?
-        searchState.matches.length - 1 :
-        searchState.currentIndex - 1;
-    selectMatch(searchState.currentIndex);
-    updateSearchResults();
-}
-
-function selectMatch(index) {
-    if (index >= 0 && index < searchState.matches.length) {
-        const match = searchState.matches[index];
-        input.setSelectionRange(match.index, match.index + match[0].length);
-        input.focus();
-    }
-}
-
-function replaceNext() {
-    const searchText = document.getElementById('searchInput').value;
-    const replaceText = document.getElementById('replaceInput').value;
-
-    if (!searchText || searchState.matches.length === 0) return;
-
-    const currentMatch = searchState.matches[searchState.currentIndex];
-    if (!currentMatch) return;
-
-    // 检查当前选中的文本是否匹配
-    const selectedText = input.value.substring(input.selectionStart, input.selectionEnd);
-    if (selectedText === currentMatch[0]) {
-        const start = input.selectionStart;
-        const end = input.selectionEnd;
-
-        input.value = input.value.substring(0, start) + replaceText + input.value.substring(end);
-
-        // 更新光标位置
-        input.setSelectionRange(start, start + replaceText.length);
-
-        updatePreview();
-        updateWordCount();
-        undoRedoManager.saveState(input.value);
-        updateUndoRedoButtons();
-
-        // 重新搜索以更新匹配列表
-        performSearch();
-    }
-
-    // 查找下一个
-    findNext();
-}
-
-function replaceAll() {
-    const searchText = document.getElementById('searchInput').value;
-    const replaceText = document.getElementById('replaceInput').value;
-    const caseSensitive = document.getElementById('caseSensitive').checked;
-    const useRegex = document.getElementById('useRegex').checked;
-
-    if (!searchText) return;
-
-    let content = input.value;
-    let searchPattern;
-
-    try {
-        if (useRegex) {
-            searchPattern = new RegExp(searchText, caseSensitive ? 'g' : 'gi');
-        } else {
-            const escapedText = searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            searchPattern = new RegExp(escapedText, caseSensitive ? 'g' : 'gi');
-        }
-    } catch (e) {
-        updateSearchResults();
-        return;
-    }
-
-    const matches = content.match(searchPattern);
-    const replacedCount = matches ? matches.length : 0;
-
-    if (replacedCount > 0) {
-        const newContent = content.replace(searchPattern, replaceText);
-        input.value = newContent;
-        updatePreview();
-        updateWordCount();
-        undoRedoManager.saveState(input.value);
-        updateUndoRedoButtons();
-
-        // 清除搜索状态
-        clearSearchHighlight();
-
-        // 显示替换结果
-        const resultsElement = document.getElementById('searchResults');
-        resultsElement.textContent = `已替换 ${replacedCount} 处`;
-        setTimeout(() => {
-            resultsElement.textContent = '';
-        }, 2000);
-    } else {
-        const resultsElement = document.getElementById('searchResults');
-        resultsElement.textContent = '未找到';
-        setTimeout(() => {
-            resultsElement.textContent = '';
-        }, 2000);
-    }
-}
 
 // 快捷键支持
 document.addEventListener('keydown', function(e) {
-    // 撤销 Ctrl+Z
-    if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-    }
-
-    // 重做 Ctrl+Y 或 Ctrl+Shift+Z
-    if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'Z')) {
-        e.preventDefault();
-        redo();
-    }
-
-    // 搜索 Ctrl+F
-    if (e.ctrlKey && e.key === 'f') {
-        e.preventDefault();
-        showSearchBar();
-    }
-
     // 全屏 F11
     if (e.key === 'F11') {
         e.preventDefault();
@@ -576,7 +227,6 @@ document.addEventListener('keydown', function(e) {
     // ESC键关闭弹窗
     if (e.key === 'Escape') {
         hideConfirmModal();
-        hideSearchBar();
         hideInstallModal();
     }
 });
@@ -694,6 +344,9 @@ window.addEventListener('appinstalled', () => {
 
 // 显示安装提示
 function showInstallPrompt() {
+    // 记录用户尝试安装PWA的意图
+    localStorage.setItem('pwa-install-attempted', 'true');
+
     if (deferredPrompt && !isInstalled) {
         showInstallModal();
     } else if (isInstalled) {
@@ -726,6 +379,9 @@ function showInstallModal() {
 function hideInstallModal() {
     const modal = document.getElementById('installModal');
     modal.classList.remove('show');
+
+    // 记录用户关闭了安装弹窗（可能表示不感兴趣）
+    localStorage.setItem('pwa-install-dismissed', 'true');
 }
 
 // 执行PWA安装
@@ -799,6 +455,22 @@ function showInstallSuccessToast() {
     showToast('✅ MarkDo已成功安装到您的设备！', '#4CAF50');
 }
 
+// 检查是否为PWA环境
+function isPWAEnvironment() {
+    // 检查是否在独立模式下运行（已安装的PWA）
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone === true ||
+           document.referrer.includes('android-app://');
+}
+
+// 检查用户是否有PWA安装意图
+function hasUserPWAIntent() {
+    // 检查用户是否曾经与PWA安装功能交互过
+    return localStorage.getItem('pwa-install-attempted') === 'true' ||
+           localStorage.getItem('pwa-install-dismissed') === 'true' ||
+           isPWAEnvironment();
+}
+
 // 注册Service Worker
 async function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
@@ -811,8 +483,12 @@ async function registerServiceWorker() {
                 const newWorker = registration.installing;
                 newWorker.addEventListener('statechange', () => {
                     if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        // 有新版本可用
-                        showUpdateAvailableToast();
+                        // 只有在PWA环境或用户有PWA使用意图时才显示更新提示
+                        if (isPWAEnvironment() || hasUserPWAIntent()) {
+                            showUpdateAvailableToast();
+                        } else {
+                            console.log('PWA: 新版本已缓存，但用户未使用PWA模式，不显示更新提示');
+                        }
                     }
                 });
             });
@@ -854,57 +530,7 @@ function initPWA() {
 // 页面加载完成后初始化PWA
 window.addEventListener('load', initPWA);
 
-// 搜索输入框事件监听
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('searchInput');
-    const caseSensitive = document.getElementById('caseSensitive');
-    const useRegex = document.getElementById('useRegex');
 
-    // 搜索输入变化时实时搜索
-    let searchTimer;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => {
-            performSearch();
-        }, 300); // 防抖
-    });
-
-    // 搜索框快捷键
-    searchInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            if (e.shiftKey) {
-                findPrevious();
-            } else {
-                findNext();
-            }
-        }
-    });
-
-    // 替换框快捷键
-    const replaceInput = document.getElementById('replaceInput');
-    replaceInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            if (e.ctrlKey) {
-                replaceAll();
-            } else {
-                replaceNext();
-            }
-        }
-    });
-
-    // 选项变化时重新搜索
-    caseSensitive.addEventListener('change', function() {
-        this.parentElement.classList.toggle('active', this.checked);
-        performSearch();
-    });
-
-    useRegex.addEventListener('change', function() {
-        this.parentElement.classList.toggle('active', this.checked);
-        performSearch();
-    });
-});
 
 // 保存内容到本地存储
 function saveContent() {
@@ -984,8 +610,6 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
         input.value = content;
         updatePreview();
         updateWordCount();
-        undoRedoManager.saveState(content);
-        updateUndoRedoButtons();
         saveContent();
     };
 
@@ -1269,28 +893,292 @@ function downloadMarkdown() {
     URL.revokeObjectURL(url);
 }
 
-// 同步滚动（可选功能）
+// 精准滚动同步功能
 let isScrolling = false;
+let lineMapping = new Map(); // 存储行号到预览元素的映射
 
+// 计算行号到预览元素的映射关系
+function calculateLineMapping() {
+    const content = input.value;
+    const lines = content.split('\n');
+    const previewElements = preview.querySelectorAll('h1, h2, h3, h4, h5, h6, p, blockquote, pre, ul, ol, table, hr, .katex-display');
+
+    lineMapping.clear();
+
+    let elementIndex = 0;
+    let inCodeBlock = false;
+    let inMathBlock = false;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const prevLine = i > 0 ? lines[i - 1] : '';
+        const nextLine = i < lines.length - 1 ? lines[i + 1] : '';
+
+        // 处理代码块状态
+        if (line.trim().startsWith('```')) {
+            inCodeBlock = !inCodeBlock;
+            if (!inCodeBlock && elementIndex < previewElements.length) {
+                // 代码块结束，映射到pre元素
+                const element = previewElements[elementIndex];
+                if (element.tagName === 'PRE' || element.classList.contains('code-block-container')) {
+                    lineMapping.set(i - getCodeBlockLength(lines, i), {
+                        element: element,
+                        offsetTop: element.offsetTop,
+                        lineNumber: i - getCodeBlockLength(lines, i)
+                    });
+                    elementIndex++;
+                }
+            }
+            continue;
+        }
+
+        // 处理数学公式块状态
+        if (line.trim() === '$$') {
+            inMathBlock = !inMathBlock;
+            if (!inMathBlock && elementIndex < previewElements.length) {
+                // 数学公式块结束
+                const element = previewElements[elementIndex];
+                if (element.classList.contains('katex-display')) {
+                    lineMapping.set(i - getMathBlockLength(lines, i), {
+                        element: element,
+                        offsetTop: element.offsetTop,
+                        lineNumber: i - getMathBlockLength(lines, i)
+                    });
+                    elementIndex++;
+                }
+            }
+            continue;
+        }
+
+        // 跳过代码块和数学公式块内部的行
+        if (inCodeBlock || inMathBlock) continue;
+
+        // 检查是否是Markdown元素的开始
+        if (isMarkdownElement(line, prevLine, nextLine)) {
+            if (elementIndex < previewElements.length) {
+                const element = previewElements[elementIndex];
+                lineMapping.set(i, {
+                    element: element,
+                    offsetTop: element.offsetTop,
+                    lineNumber: i
+                });
+                elementIndex++;
+            }
+        }
+    }
+}
+
+// 获取代码块的长度
+function getCodeBlockLength(lines, endIndex) {
+    let length = 0;
+    for (let i = endIndex - 1; i >= 0; i--) {
+        length++;
+        if (lines[i].trim().startsWith('```')) {
+            break;
+        }
+    }
+    return length - 1;
+}
+
+// 获取数学公式块的长度
+function getMathBlockLength(lines, endIndex) {
+    let length = 0;
+    for (let i = endIndex - 1; i >= 0; i--) {
+        length++;
+        if (lines[i].trim() === '$$') {
+            break;
+        }
+    }
+    return length - 1;
+}
+
+// 判断是否是Markdown元素
+function isMarkdownElement(line, prevLine = '', nextLine = '') {
+    const trimmed = line.trim();
+
+    // 空行不是元素
+    if (!trimmed) return false;
+
+    // 标题
+    if (/^#{1,6}\s/.test(trimmed)) return true;
+
+    // 代码块开始/结束
+    if (trimmed.startsWith('```')) return true;
+
+    // 表格行
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) return true;
+
+    // 引用
+    if (trimmed.startsWith('>')) return true;
+
+    // 列表项
+    if (/^[-*+]\s/.test(trimmed)) return true;
+    if (/^\d+\.\s/.test(trimmed)) return true;
+
+    // 分割线
+    if (/^[-*_]{3,}$/.test(trimmed)) return true;
+
+    // 数学公式块
+    if (trimmed === '$$') return true;
+
+    // 普通段落（前后有空行或文档开始/结束）
+    const isParagraph = trimmed.length > 0 &&
+                       !trimmed.startsWith('#') &&
+                       !trimmed.startsWith('```') &&
+                       !trimmed.startsWith('|') &&
+                       !trimmed.startsWith('>') &&
+                       !/^[-*+]\s/.test(trimmed) &&
+                       !/^\d+\.\s/.test(trimmed);
+
+    if (isParagraph) {
+        // 检查是否是新段落的开始
+        return !prevLine.trim() || prevLine.trim().startsWith('#') ||
+               prevLine.trim().startsWith('```') || prevLine.trim() === '$$';
+    }
+
+    return false;
+}
+
+// 动态计算编辑器行高
+function getEditorLineHeight() {
+    const style = window.getComputedStyle(input);
+    const lineHeight = parseInt(style.lineHeight);
+    const fontSize = parseInt(style.fontSize);
+    return lineHeight || fontSize * 1.4; // 如果没有设置line-height，使用font-size的1.4倍
+}
+
+// 根据编辑器滚动位置计算对应的预览位置
+function getPreviewScrollPosition(editorScrollTop) {
+    const lineHeight = getEditorLineHeight();
+    const currentLine = Math.floor(editorScrollTop / lineHeight);
+
+    // 找到最接近的映射行
+    let targetElement = null;
+    let closestLine = -1;
+    let nextElement = null;
+    let nextLine = Infinity;
+
+    for (let [lineNum, mapping] of lineMapping) {
+        if (lineNum <= currentLine && lineNum > closestLine) {
+            closestLine = lineNum;
+            targetElement = mapping;
+        }
+        if (lineNum > currentLine && lineNum < nextLine) {
+            nextLine = lineNum;
+            nextElement = mapping;
+        }
+    }
+
+    if (targetElement) {
+        let targetY = targetElement.offsetTop;
+
+        // 如果有下一个元素，进行插值计算
+        if (nextElement && nextLine !== Infinity) {
+            const lineProgress = (currentLine - closestLine) / (nextLine - closestLine);
+            const heightDiff = nextElement.offsetTop - targetElement.offsetTop;
+            targetY += heightDiff * lineProgress;
+        } else {
+            // 没有下一个元素时，使用行偏移
+            const lineOffset = currentLine - closestLine;
+            const estimatedPixelOffset = lineOffset * (lineHeight * 0.6); // 调整系数
+            targetY += estimatedPixelOffset;
+        }
+
+        // 调整到视口中心偏上的位置
+        return Math.max(0, targetY - preview.clientHeight * 0.25);
+    }
+
+    // 回退到百分比对齐
+    const scrollPercentage = editorScrollTop / Math.max(1, input.scrollHeight - input.clientHeight);
+    return scrollPercentage * Math.max(0, preview.scrollHeight - preview.clientHeight);
+}
+
+// 根据预览滚动位置计算对应的编辑器位置
+function getEditorScrollPosition(previewScrollTop) {
+    const targetY = previewScrollTop + preview.clientHeight * 0.25;
+    const lineHeight = getEditorLineHeight();
+
+    // 找到最接近的预览元素
+    let targetMapping = null;
+    let nextMapping = null;
+    let minDistance = Infinity;
+
+    // 按offsetTop排序的映射数组
+    const sortedMappings = Array.from(lineMapping.entries())
+        .sort((a, b) => a[1].offsetTop - b[1].offsetTop);
+
+    for (let i = 0; i < sortedMappings.length; i++) {
+        const [lineNum, mapping] = sortedMappings[i];
+        const distance = Math.abs(mapping.offsetTop - targetY);
+
+        if (mapping.offsetTop <= targetY) {
+            targetMapping = { lineNum, mapping };
+            if (i + 1 < sortedMappings.length) {
+                const [nextLineNum, nextMappingData] = sortedMappings[i + 1];
+                nextMapping = { lineNum: nextLineNum, mapping: nextMappingData };
+            }
+        } else {
+            break;
+        }
+    }
+
+    if (targetMapping) {
+        let targetLine = targetMapping.lineNum;
+
+        // 如果有下一个元素，进行插值计算
+        if (nextMapping) {
+            const currentY = targetMapping.mapping.offsetTop;
+            const nextY = nextMapping.mapping.offsetTop;
+            const progress = (targetY - currentY) / (nextY - currentY);
+
+            if (progress >= 0 && progress <= 1) {
+                const lineDiff = nextMapping.lineNum - targetMapping.lineNum;
+                targetLine += lineDiff * progress;
+            }
+        } else {
+            // 没有下一个元素时，使用像素偏移估算
+            const pixelOffset = targetY - targetMapping.mapping.offsetTop;
+            const estimatedLineOffset = pixelOffset / (lineHeight * 0.6);
+            targetLine += estimatedLineOffset;
+        }
+
+        return Math.max(0, targetLine * lineHeight);
+    }
+
+    // 回退到百分比对齐
+    const scrollPercentage = previewScrollTop / Math.max(1, preview.scrollHeight - preview.clientHeight);
+    return scrollPercentage * Math.max(0, input.scrollHeight - input.clientHeight);
+}
+
+// 编辑器滚动事件
 input.addEventListener('scroll', function() {
     if (isScrolling) return;
     isScrolling = true;
 
-    const scrollPercentage = input.scrollTop / (input.scrollHeight - input.clientHeight);
-    preview.scrollTop = scrollPercentage * (preview.scrollHeight - preview.clientHeight);
+    const targetScrollTop = getPreviewScrollPosition(input.scrollTop);
+    preview.scrollTop = targetScrollTop;
 
-    setTimeout(() => { isScrolling = false; }, 100);
+    setTimeout(() => { isScrolling = false; }, 50);
 });
 
+// 预览区滚动事件
 preview.addEventListener('scroll', function() {
     if (isScrolling) return;
     isScrolling = true;
 
-    const scrollPercentage = preview.scrollTop / (preview.scrollHeight - preview.clientHeight);
-    input.scrollTop = scrollPercentage * (input.scrollHeight - input.clientHeight);
+    const targetScrollTop = getEditorScrollPosition(preview.scrollTop);
+    input.scrollTop = targetScrollTop;
 
-    setTimeout(() => { isScrolling = false; }, 100);
+    setTimeout(() => { isScrolling = false; }, 50);
 });
+
+// 在内容更新时重新计算映射
+function updateScrollMapping() {
+    // 延迟计算，确保DOM已更新
+    setTimeout(() => {
+        calculateLineMapping();
+    }, 100);
+}
 
 // 工具栏功能函数
 function finishEdit() {
